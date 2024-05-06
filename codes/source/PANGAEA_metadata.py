@@ -4,7 +4,7 @@ import pdb
 import glob
 
 wdir = os.getcwd() + "/"
-remote = ((("/net/blanc/" in wdir) | ("/work/awalbroe/" in wdir)) and ("/mnt/f/" not in wdir))		# identify if the code is executed on the blanc computer or at home
+path_data_base = os.path.dirname(wdir[:-10]) + "/data/"
 
 import numpy as np
 import xarray as xr
@@ -119,12 +119,8 @@ def extract_metadata(
 	- save to tab limited text file
 """
 
-if remote:
-	path_data = {'synergy': "/net/blanc/awalbroe/Data/synergetic_ret/tests_01/output/l2/"}
-	path_output = "/net/blanc/awalbroe/Data/synergetic_ret/tests_01/output/l2/"
-else:
-	path_data = {'synergy': "/mnt/f/heavy_data/synergetic_ret/synergetic_ret/tests_01/output/l2/"}
-	path_output = "/mnt/f/heavy_data/synergetic_ret/synergetic_ret/tests_01/output/l2/"
+path_data = path_data_base + "retrieval_output/mosaic/"
+path_output = path_data_base + "retrieval_output/mosaic/"
 
 
 # settings:
@@ -140,7 +136,7 @@ for key in set_dict['products']:
 
 	product = key.upper()
 	print(f"Extracting metadata from {product}.")
-	files = sorted(glob.glob(path_data['synergy'] + f"MOSAiC_uoc_hatpro_lhumpro-243-340_l2_{key}_v*.nc"))
+	files = sorted(glob.glob(path_data + f"MOSAiC_uoc_hatpro_lhumpro-243-340_l2_{key}_v*.nc"))
 	extract_metadata(files, path_output, product=product)
 
 
