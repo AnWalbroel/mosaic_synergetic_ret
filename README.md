@@ -2,7 +2,7 @@
 
 Create a directory (e.g., `/home/user/synergetic_ret/`) where you clone or copy the codes to `/home/user/synergetic_ret/codes/`. Data (see below) must then be downloaded and moved to respective subdirectories in `/home/user/synergetic_ret/data/`. Plots will be saved to `/home/user/synergetic_ret/plots/`.
 
-To recreate figures shown in (INSERT PUBLICAION), execute [create_plots.py](./codes/create_plots.py) as follows:
+To recreate figures shown in (INSERT PUBLICATION), execute [create_plots.py](./codes/create_plots.py) as follows:
 
 - `python3 create_plots.py "1"` to recreate Figure 1
 
