@@ -34,38 +34,22 @@ which_ret = sys.argv[1] 	# set the number of the figure of the manuscript as str
 from NN_retrieval import run_NN_retrieval
 
 # paths:
-# # # # # # # # # # # # # # # # path_data = {'path_output': path_data_base + "retrieval_output/mosaic/",	# path where output is saved to
-			# # # # # # # # # # # # # # # # 'path_output_info': path_data_base + "info_content/",
-			# # # # # # # # # # # # # # # # 'path_output_pred_ref': path_data_base + "retrieval_output/validation_prediction_and_reference/",
-			# # # # # # # # # # # # # # # # 'path_data': path_data_base + "training_data/",			# path of training/test data
-			# # # # # # # # # # # # # # # # 'path_data_eval': path_data_base + "training_data/",
-			# # # # # # # # # # # # # # # # 'path_ps_track': path_data_base + "polarstern_track/",		# path of Polarstern track data
-			# # # # # # # # # # # # # # # # 'path_tb_obs': {'hatpro': path_data_base + "hatpro_l1/",
-							# # # # # # # # # # # # # # # # 'mirac-p': path_data_base + "mirac-p_l1/"},	# path of published level 1 tb data
-			# # # # # # # # # # # # # # # # 'path_tb_offsets': "",								# path of the MOSAiC MWR TB offset correction
-			# # # # # # # # # # # # # # # # 'path_old_ret': path_data_base + "hatpro_l2/",					# path of old HATPRO retrievals
-			# # # # # # # # # # # # # # # # 'path_rs_obs': path_data_base + "MOSAiC_radiosondes/",
-			# # # # # # # # # # # # # # # # 'descriptor_file': path_scripts + "descriptor_file_ecmwf.txt",	# for PAMTRA simulations
-			# # # # # # # # # # # # # # # # 'test_purpose': path_scripts}
-# # # # # # # # # # # # # # # # path_plots = {'path_plots': path_plots_base + "synergetic_ret/",
-			# # # # # # # # # # # # # # # # 'path_plots_info': path_plots_base + "synergetic_ret/info_content/"}
-
-
 path_data = {'path_output': path_data_base + "retrieval_output/mosaic/",	# path where output is saved to
 			'path_output_info': path_data_base + "info_content/",
 			'path_output_pred_ref': path_data_base + "retrieval_output/validation_prediction_and_reference/",
 			'path_data': path_data_base + "training_data/",			# path of training/test data
 			'path_data_eval': path_data_base + "training_data/",
-			'path_ps_track': "/mnt/f/heavy_data/polarstern_track/",		# path of Polarstern track data
+			'path_ps_track': path_data_base + "polarstern_track/",		# path of Polarstern track data
 			'path_tb_obs': {'hatpro': path_data_base + "hatpro_l1/",
 							'mirac-p': path_data_base + "mirac-p_l1/"},	# path of published level 1 tb data
 			'path_tb_offsets': "",								# path of the MOSAiC MWR TB offset correction
-			'path_old_ret': "/mnt/f/heavy_data/MOSAiC_radiometers/HATPRO_l2_v01/",					# path of old HATPRO retrievals
-			'path_rs_obs': "/mnt/f/heavy_data/MOSAiC_radiosondes/",
+			'path_old_ret': path_data_base + "hatpro_l2/",					# path of old HATPRO retrievals
+			'path_rs_obs': path_data_base + "MOSAiC_radiosondes/",
 			'descriptor_file': path_scripts + "descriptor_file_ecmwf.txt",	# for PAMTRA simulations
 			'test_purpose': path_scripts}
 path_plots = {'path_plots': path_plots_base + "synergetic_ret/",
 			'path_plots_info': path_plots_base + "synergetic_ret/info_content/"}
+
 for key, value in path_plots.items():
 	os.makedirs(os.path.dirname(value), exist_ok=True)
 
