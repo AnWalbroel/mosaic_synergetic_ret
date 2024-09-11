@@ -792,6 +792,26 @@ def convert_spechum_to_relhum(
     return relhum
 
 
+def virtual_temp(
+    temp,
+    q):
+
+    """
+    Compute the virtual temperature from specific humidity and temperature.
+
+    Parameters:
+    -----------
+    temp : array of floats
+        Array of temperature (in K).
+    q : array of floats
+        Array of specific humidity (in kg kg^-1).
+    """
+
+    temp_v = temp * (q/M_dv + (1 - q))
+
+    return temp_v
+
+
 def equiv_pot_temperature(
     temp,
     pres,
