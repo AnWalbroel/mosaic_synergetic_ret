@@ -5,16 +5,16 @@ import datetime as dt
 import pdb
 
 wdir = os.getcwd() + "/"
-path_tools = os.path.dirname(wdir) + "/tools/"
-path_data_base = os.path.dirname(wdir[:-1]) + "/data/"
+path_tools = os.path.dirname(wdir[:-1]) + "/tools/"
+path_data_base = os.path.abspath(wdir + "../..") + "/data/"
 
 import numpy as np
 import xarray as xr
 
 sys.path.insert(0, path_tools)
 
-from import_data import import_radiosonde_daterange
-from met_tools import convert_spechum_to_relhum, e_sat
+from import_data import import_hatpro_level1b_daterange_pangaea
+from met_tools import convert_spechum_to_relhum, e_sat, virtual_temp
 
 
 # constants (taken from met_tools.py):
@@ -22,31 +22,6 @@ R_d = 287.0597  # gas constant of dry air, in J kg-1 K-1
 R_v = 461.5     # gas constant of water vapour, in J kg-1 K-1
 M_dv = R_d / R_v # molar mass ratio , in ()
 g = 9.80665     # gravitation acceleration, in m s^-2 (from https://doi.org/10.6028/NIST.SP.330-2019 )
-
-
-def radiosonde_dict_to_xarray(sonde_dict):
-
-    """
-    Convert radiosonde dictionary imported with import_radiosonde_daterange to xarray dataset.
-
-    Parameters:
-    -----------
-    sonde_dict : dictionary
-        Dictionary containing radiosonde data imported with import_radiosonde_daterange.
-    """
-
-    DS = xr.Dataset(coords={'height': (['height'], sonde_dict['height'][0,:]),
-                            'launch_time': (['launch_time'], sonde_dict['launch_time'].astype('datetime64[s]').astype('datetime64[ns]'))})
-    DS['temp'] = xr.DataArray(sonde_dict['temp'], dims=['launch_time', 'height'])
-    DS['rh'] = xr.DataArray(sonde_dict['rh'], dims=['launch_time', 'height'])
-    DS['q'] = xr.DataArray(sonde_dict['q'], dims=['launch_time', 'height'], attrs={'units': "kg kg-1"})
-    DS['rho_v'] = xr.DataArray(sonde_dict['q'], dims=['launch_time', 'height'], attrs={'units': "kg m-3"})
-    DS['pres'] = xr.DataArray(sonde_dict['pres'], dims=['launch_time', 'height'], attrs={'units': "Pa"})
-    DS['lat'] = xr.DataArray(sonde_dict['lat'], dims=['launch_time'], attrs={'units': "deg north"})
-    DS['lon'] = xr.DataArray(sonde_dict['lon'], dims=['launch_time'], attrs={'units': "deg east"})
-    DS['iwv'] = xr.DataArray(sonde_dict['iwv'], dims=['launch_time'], attrs={'units': "kg m-2"})
-
-    return DS
 
 
 def compute_RH_error(
@@ -103,18 +78,18 @@ def compute_RH_error(
 
 
 """
-    Script to compute relative humidity from retrieved specific humidity and temperature profiles,
-    as well as radiosonde level 3 air pressure data for the MOSAiC expedition. The relative 
-    humidity data will be saved as netCDF files similar to those of the retrieved q and temp
-    profiles.
-    - import radiosonde and retrieved MWR data
-    - loop over MOSAiC days: interpolate data to zenith MWR obs time grid
+    Script to compute relative humidity from retrieved specific humidity and temperature profiles.
+    The relative humidity data will be saved as netCDF files similar to those of the retrieved q 
+    and temp profiles..
+    - import retrieved MWR data
+    - loop over MOSAiC days: get surface pressure from HATPRO's weather station, apply running mean 
+        for smoothing and interpolate to MWR obs time grid
 """
 
 
 # Paths
 path_data = {'nn_syn_mosaic': path_data_base + "retrieval_output/mosaic/",
-            'radiosondes': path_data_base + "MOSAiC_radiosondes_level_3/"}
+            'tb_hat': path_data_base + "hatpro_l1/"}
 path_output = path_data_base + "retrieval_output/mosaic/"
 
 
@@ -137,16 +112,6 @@ os.makedirs(os.path.dirname(set_dict['path_output']), exist_ok=True)
 set_dict['u_c_d'] = {'q': [0.0, 0.001],     # from g kg-1 to kg kg-1
                     'temp': [0.0, 1.0],     # from K to K
                     'temp_bl': [0.0, 1.0],} # from K to K
-
-
-# import radiosonde data for the full MOSAiC period:
-print("Importing radiosonde data....")
-sonde_dict = import_radiosonde_daterange(path_data['radiosondes'], set_dict['date_0'], set_dict['date_1'], 
-                                        s_version='level_3', remove_failed=True)
-sonde_dict['launch_time_npdt'] = sonde_dict['launch_time'].astype('datetime64[s]')
-
-# put radiosonde data into xarray dataset:
-RS_DS_all = radiosonde_dict_to_xarray(sonde_dict)
 
 
 # loop over dates:
@@ -191,38 +156,50 @@ for date in date_range:
         pdb.set_trace()
 
 
-    # limit radiosonde data to +/- 1 day around date:
-    date_minus = date + np.timedelta64(-1, "D")
-    date_plus = date + np.timedelta64(2, "D")   # +2 days, because T00:00:00
-    RS_DS = RS_DS_all.sel(launch_time=slice(date_minus, date_plus))
+    # for pressure estimation, get surface pressure observations from HATPRO:
+    hat_dict = import_hatpro_level1b_daterange_pangaea(path_data['tb_hat'], date_str, date_str)
 
-    if len(RS_DS.launch_time) == 0: continue    # no radiosonde data
+    # identify time duplicates (xarray dataset coords not permitted to have any):
+    hat_dupno = np.where(~(np.diff(hat_dict['time']) == 0))[0]
+
+    # fill gaps, then reduce to non-time-duplicates and forward it to the pressure computation:
+    HAT_pres = xr.DataArray(hat_dict['pa'][hat_dupno], dims=['time'], 
+                            coords={'time': (['time'], hat_dict['time'][hat_dupno].astype('datetime64[s]'))})
+    HAT_pres[HAT_pres < 0] = np.nan     # fill fill values with nan
+    HAT_pres = HAT_pres.interpolate_na(dim='time', method='linear')
+    HAT_pres = HAT_pres.ffill(dim='time')
+
+    # apply smoothing to correct measurement errors: 60 min running mean ; then get it onto retrieval time grid:
+    HAT_pres_DF = HAT_pres.to_dataframe(name='pres')
+    HAT_pres = HAT_pres_DF.rolling("60min", center=True).mean().to_xarray().pres
+    HAT_pres = HAT_pres.interp(time=NN_DS.time)
+
+    # compute pressure for each height level using the hypsometric equation: loop over height grid:
+    hgt = NN_DS.height.values
+    n_hgt = len(hgt)
+    temp_v = virtual_temp(NN_DS.temp.values, NN_DS.q.values)    # virtual temperature
+    pres = np.full(NN_DS.temp.values.shape, np.nan)
+    for k in range(n_hgt):
+        if k == 0:
+            pres[:,k] = HAT_pres
+        else:
+            # layer-average virtual temperature:
+            temp_v_avg = 0.5*(temp_v[:,k-1] + temp_v[:,k])
+
+            # hypsometric height formula:
+            pres[:,k] = pres[:,k-1] * np.exp((hgt[k-1] - hgt[k])*g / (R_d*temp_v_avg))
+
+    pres = xr.DataArray(pres, dims=NN_DS.q.dims, coords=NN_DS.q.coords)     # to xarray data array
 
 
-    # ret sonde to retrieval grid and fill the pressure data near the surface:
-    rs_pres = RS_DS.pres
-    rs_temp = RS_DS.temp
-    rs_hgt = RS_DS.height.values
-    RS_DS = RS_DS.interp(coords={'height': NN_DS.height.values})
-
-    # use barometric height formula to get pressure at the surface: find lowest nonnan values
-    lowest_nonnan = np.where((~np.isnan(rs_pres.values)) & (~np.isnan(rs_temp.values)))
-    diff_lnn = np.diff(lowest_nonnan[1])        # if difference of the height dim is < 0, that's then the 
-                                                # first index of the next radiosonde launch
-    lowest_nonnan_idx = np.concatenate((np.array([0]), np.where(diff_lnn < 0)[0]+1))
-    lowest_nonnan = (lowest_nonnan[0][lowest_nonnan_idx], lowest_nonnan[1][lowest_nonnan_idx])
-    pres_ref = rs_pres.values[lowest_nonnan]    # lowest nonnan pres in Pa
-    temp_ref = rs_temp.values[lowest_nonnan]    # lowest nonnan temp in K
-    hgt_ref = rs_hgt[lowest_nonnan[1]]          # lowest nonnan height in m
-    pres_sfc = pres_ref / (np.exp(-g*hgt_ref / (R_d*temp_ref)))     # extrapolated surface pressure in Pa
-    RS_DS['pres'][:,0] = pres_sfc
-
-
-    # interpolate radiosonde pressure on NN_DS time grid and compute relative humidity:
-    rs_pres = RS_DS.pres.interp(launch_time=NN_DS.time)
-    NN_DS['rh'] = xr.DataArray(convert_spechum_to_relhum(NN_DS.temp.values, rs_pres.values, 
+    # compute relative humidity:
+    NN_DS['rh'] = xr.DataArray(convert_spechum_to_relhum(NN_DS.temp.values, pres.values, 
                                 NN_DS.q.values).astype(np.float32), dims=NN_DS.q.dims)
     NN_DS['rh'] = NN_DS.rh.where(NN_DS.rh < 2.0, other=float(-9999.))       # mask where relative humidity is too high
+    
+
+    # flag strange relative humidity values (when temperature estimates were bad:
+    NN_DS['rh'] = NN_DS.rh.where((NN_DS.temp > 180.0) & (NN_DS.temp < 330.0), other=float(-9999.))
 
     # set attributes:
     NN_DS['rh'].attrs = {'units': '1',
@@ -231,9 +208,8 @@ for date in date_range:
                         'ancillary_variables': "rh_rmse",
                         'valid_min': np.array([0.0]).astype(np.float32)[0],
                         'valid_max': np.array([2.0]).astype(np.float32)[0],
-                        'comment': ("Relative humidity was computed from retrieved temperature and specific humidity profiles, " +
-                                    "as well as level 3 radiosonde air pressure data, which has been interpolated to the retrieval " +
-                                    "grid and the retrieval time steps. " +
+                        'comment': ("Relative humidity was computed from retrieved temperature and specific humidity profiles " +
+                                    "using the hypsometric equation and HATPRO's surface air pressure data. " +
                                     "Note that the height grid does not reflect the true vertical resolution of the retrieved " +
                                     "profile. The vertical resolution of microwave radiometer retrievals is usually much " +
                                     "lower and rather on the order of kilometers.")
@@ -244,14 +220,14 @@ for date in date_range:
     # also compute relative humidity uncertainty:
     rh_err = compute_RH_error(NN_DS.q.sel(time=flag_mask).mean('time').values, 
                                 NN_DS.temp.sel(time=flag_mask).mean('time').values, 
-                                rs_pres.sel(time=flag_mask).mean('time').values,
+                                pres.sel(time=flag_mask).mean('time').values,
                                 NN_DS.q_rmse.values, NN_DS.temp_rmse.values, np.full(NN_DS.height.shape, 100.0))
     NN_DS['rh_rmse'] = xr.DataArray(rh_err.astype(np.float32), dims=['height'])
     NN_DS['rh_rmse'].attrs = {'long_name': "Relative humidity uncertainty",
                                 'standard_name': "relative_humidity standard error",
                                 'units': "1",
                                  'comment': ("Computed from error propagation of this day's mean " +
-                                            "temperature, specific humidity and radiosonde air pressure.")
+                                            "temperature, specific humidity and air pressure.")
                                 }
     NN_DS['rh_rmse'].encoding["_FillValue"] = float(-9999.)     # add _FillValue attribute
 
@@ -272,10 +248,8 @@ for date in date_range:
     NN_DS['flag_m'].encoding["_FillValue"] = np.array([0]).astype(np.short)[0]
 
     # update other attributes:
-    NN_DS.attrs['title'] = ("Relative humidity (rh) computed from radiosonde air pressure, retrieved temperature (temp) and " + 
+    NN_DS.attrs['title'] = ("Relative humidity (rh) computed with the hypsometric equation, surface air pressure from HATPRO, retrieved temperature (temp) and " +  
                             "specific humidity (q) during the MOSAiC expedition")
-    NN_DS.attrs['source'] += " and level 3 radiosondes"
-    NN_DS.attrs['dependencies'] += ", extended radiosonde profiles: https://doi.org/10.1594/PANGAEA.961881"
     NN_DS.attrs['history'] += f"; {dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}, computed relative humidity with rh_from_temp_q.py"
 
     exclude_attrs = ['retrieval_net_architecture', 'retrieval_batch_size', 'retrieval_epochs', 

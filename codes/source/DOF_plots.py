@@ -45,6 +45,15 @@ def run_DOF_plots(path_data, path_plots):
     fs_micro = fs_dwarf - 2
     msize = 9.0
 
+    # colours:
+    col_dict = {'OP': (1,0.72,0.12),        # synergetic retrieval
+                'K': (0.067,0.29,0.769),    # MWR_PRO (HATPRO)
+                'K+V': 'slategrey', 
+                'K+G': 'darkcyan', 
+                'K+V+G': 'darkkhaki'}
+    col_fade_dict = {'OP': (1,0.72,0.12,0.15),  # synergetic ret, but less alpha
+                    'K': (0.067,0.29,0.769,0.15)}
+
 
     def cumulative_DOF(
         I_DS_dict,
@@ -321,6 +330,110 @@ def run_DOF_plots(path_data, path_plots):
             plt.show()
             pdb.set_trace()
 
+        plt.close()
+
+
+    def AK_resolution_plot(
+        I_DS_dict,
+        set_dict):
+
+        """
+        Visualizes the vertical resolution estimated from the diagonal values of the Averaging
+        Kernel matrix and the vertical grid spacing. 
+
+        Parameters:
+        -----------
+        I_DS_dict : dictionary of xarray datasets
+            Dictionary containing xarray datasets for each set of predictors used for information
+            content estimation for the predictand. Each dataset has been created with 
+            NN_retrieval.py exec_type='i_cont'. 
+        set_dict : dict
+            Dictionary containing additional information.
+        """
+
+        # create output path if not existing:
+        plotpath_dir = os.path.dirname(set_dict['path_plots'] + f"{set_dict['p']}/")
+        if not os.path.exists(plotpath_dir):
+            os.makedirs(plotpath_dir)
+
+        # compute height grid spacing as 'layers': mean layer height diff: dz_i = (z_i+1 - z_i-1)*0.5
+        # diff at top of grid can be larger because original height grid for info content was extended
+        # ([..., 9000, 9500, 10000, 11000, 12000, ...]). Thus, the top must have 0.5*(11000-9500)
+        # at sfc, grid spacing must be (z0 + z1)/2
+        height = I_DS_dict['OP'].height.mean('n_s').values
+        dz_0 = np.concatenate((np.array([0]), np.diff(height)))
+        dz_1 = np.concatenate((np.diff(height), np.array([np.diff(height)[-1]])))
+        dz = 0.5*(dz_0+dz_1)
+
+
+        # variables for adaptations of plot properties:
+        labels_boxplot = {'OP': "All frequencies", 'K': "K--band"}
+        y_label_dict = {'temp': "Temperature profile DOF",
+                        'temp_bl': "Temperature profile DOF",
+                        'q': "Specific humidity profile DOF"}
+        legend_loc = 'upper left'
+        zorders = {'OP': 35., 'K': 31, 'K+V': 25, 'K+G': 27, 'K+V+G': 29}
+        linewidths = {'OP': 2.5, 'K': 2.5, 'K+V': 1.5, 'K+G': 1.5, 'K+V+G': 1.5}
+
+
+        f1 = plt.figure(figsize=(5,6))
+        a1 = plt.axes()
+
+        y_lims = np.array([0, 10000.])          # height grid lims in m
+        x_lims = np.array([0., 10500.])         # estimated height resolution limits in m
+
+        # plot height resolutions:
+        for k, key in enumerate(I_DS_dict.keys()):
+            AK_mean = I_DS_dict[key].AK_diag.mean('n_s')
+
+            if key in ['OP', 'K']:  # compute AK mean +/- std for resolution estimation
+                # AK_p = AK_mean + I_DS_dict[key].AK_diag.std('n_s')
+                # AK_m = AK_mean - I_DS_dict[key].AK_diag.std('n_s')
+                # a1.fill_betweenx(height, dz/AK_m, dz/AK_p, color=col_fade_dict[key],
+                                # label=f"{labels_boxplot[k]} std. range", zorder=zorders[key])
+
+                a1.plot(dz / AK_mean, height, color=col_dict[key], 
+                        linewidth=linewidths[key], label=labels_boxplot[key], zorder=zorders[key]+1)
+
+
+        # legend/colorbar:
+        lh, ll = a1.get_legend_handles_labels()
+        leg1 = a1.legend(lh, ll, loc=legend_loc, fontsize=fs_micro, framealpha=0.5)
+        a1.add_artist(leg1)
+
+        # set axis limits:
+        a1.set_ylim(y_lims)
+        a1.set_xlim(x_lims)
+
+        # set ticks and tick labels and parameters:
+        a1.minorticks_on()
+        a1.tick_params(axis='both', labelsize=fs_micro)
+
+        # grid:
+        a1.grid(which='major', axis='both', color=(0.5,0.5,0.5), alpha=0.5)
+
+
+        # set labels:
+        a1.set_xlabel("Effective resolution (m)", fontsize=fs_dwarf)
+        a1.set_ylabel("Height (m)", fontsize=fs_dwarf)
+
+        # adjust axis width:
+        f1.tight_layout()
+
+        if set_dict['save_figures']:
+
+            plotname = f"NN_syn_ret_info_content_AK_resolution_{set_dict['p']}"
+            plotfile = plotpath_dir + "/" + plotname
+            f1.savefig(plotfile + ".png", dpi=300, bbox_inches='tight')
+            f1.savefig(plotfile + ".pdf", bbox_inches='tight')
+            print(f"Saved {plotfile}.png.")             
+
+        else:
+            plt.show()
+            pdb.set_trace()
+
+        plt.close()
+
 
     def Jacobian_matrix_plot(
         I_DS_dict, 
@@ -398,6 +511,8 @@ def run_DOF_plots(path_data, path_plots):
             plt.show()
             pdb.set_trace()
 
+        plt.close()
+
 
     # settings:
     set_dict = {'save_figures': True,
@@ -408,6 +523,9 @@ def run_DOF_plots(path_data, path_plots):
                 'id_dict': {'472': 'OP', '417': 'OP', '424': 'OP'},         # dictionary to identify the type of the test case:
                                                                             # OP: operational, K: K band only, K+V: K and V band, ...
                 'plot_jacobian': False,     # if True, Jacobian matrix of OP is visualized
+                'plot_cumul_DOF': False,    # if True, the cumulative sum of the diagonal entries of the AK are visualized
+                'plot_AK_resolution': True, # if True, the vertical resolution is estimated from the AK and the height 
+                                            # grid and visualized
                 }
 
 
@@ -487,10 +605,15 @@ def run_DOF_plots(path_data, path_plots):
 
 
     # visualize information content (cumulative AK diagonal):
-    cumulative_DOF(I_DS_dict, set_dict)
+    if set_dict['plot_cumul_DOF']:
+        cumulative_DOF(I_DS_dict, set_dict)
 
     # boxplot of DOF including different weather conditions:
     DOF_boxplot(I_DS_dict, idx_dict, set_dict)
+
+    # if desired: plot the estimated vertical resolution of the retrieved profiles:
+    if set_dict['plot_AK_resolution']:
+        AK_resolution_plot(I_DS_dict, set_dict)
 
     # if desired: Jacobian Matrix plot:
     if set_dict['plot_jacobian']:

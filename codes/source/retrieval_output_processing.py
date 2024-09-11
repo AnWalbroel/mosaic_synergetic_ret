@@ -21,7 +21,7 @@ import xarray as xr
 
 
 # Paths
-path_data_base = os.path.dirname(wdir[:-1]) + "/data/"
+path_data_base = os.path.abspath(wdir + "../..") + "/data/"
 path_data = {'nn_syn_mosaic': path_data_base + "retrieval_output/mosaic/",
             'error_stats': path_data_base + "retrieval_evaluation/"}
 path_output = path_data_base + "retrieval_output/mosaic/edited/"

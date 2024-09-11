@@ -7,7 +7,7 @@ import gc
 
 wdir = os.getcwd() + "/"
 path_tools = os.path.dirname(wdir[:-1]) + "/tools/"
-path_data_base = os.path.dirname(wdir[:-10]) + "/data/"
+path_data_base = os.path.abspath(wdir + "../..") + "/data/"
 sys.path.insert(0, path_tools)
 
 import numpy as np
