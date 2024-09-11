@@ -2,7 +2,7 @@
 
 Create a directory (e.g., `/home/user/synergetic_ret/`) where you clone or copy the codes to `/home/user/synergetic_ret/codes/`. Data (see below) must then be downloaded and moved to respective subdirectories in `/home/user/synergetic_ret/data/`. Plots will be saved to `/home/user/synergetic_ret/plots/`.
 
-To recreate figures shown in (INSERT PUBLICATION), execute [create_plots.py](./codes/create_plots.py) as follows:
+To recreate figures shown in (INSERT PUBLICATION CITATION), execute [create_plots.py](./codes/create_plots.py) as follows:
 
 - `python3 create_plots.py "1"` to recreate Figure 1
 
@@ -24,7 +24,8 @@ The string following the script name indicates which retrieval to perform.
 ### Data:
 -----
 1) Retrieved IWV, and temperature, specific humidity and relative humidity profiles from MOSAiC observations:
-	Download data from PANGAEA (...) and (...). Move files to `.../data/retrieval_output/mosaic/`.				# # # # # # # # # # # # DOI PENDING # # # # # # # # # # # # # 
+	Download data from PANGAEA  https://doi.org/10.1594/PANGAEA.968778 and 
+	https://doi.org/10.1594/PANGAEA.968760 . Move files to `.../data/retrieval_output/mosaic/`.
 
 2) Retrieved IWV, and temperature and specific humidity profiles from synthetic ERA5 observations:
 	Download data from https://doi.org/10.5281/zenodo.10998146 . Move files to 

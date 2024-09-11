@@ -850,3 +850,6 @@ class info_content:
         DS.to_netcdf(path_output + f"NN_synergetic_ret_info_content_{self.aux_i['file_descr']}.nc", mode='w', format='NETCDF4')
         DS.close()
 
+
+
+
