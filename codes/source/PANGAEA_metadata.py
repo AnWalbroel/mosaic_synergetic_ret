@@ -4,7 +4,7 @@ import pdb
 import glob
 
 wdir = os.getcwd() + "/"
-path_data_base = os.path.dirname(wdir[:-10]) + "/data/"
+path_data_base = os.path.abspath(wdir + "../..") + "/data/"
 
 import numpy as np
 import xarray as xr

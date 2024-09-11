@@ -6,7 +6,7 @@ import sys
 import datetime as dt
 
 wdir = os.getcwd() + "/"
-path_tools = os.path.dirname(wdir) + "/tools/"
+path_tools = os.path.dirname(wdir[:-1]) + "/tools/"
 sys.path.insert(0, path_tools)
 
 from import_data import import_MOSAiC_Radiosondes_PS122_Level3_merged_txt, import_MOSAiC_Radiosondes_PS122_Level2_tab
@@ -197,7 +197,7 @@ def save_MOSAiC_Radiosondes_PS122_Level3_merged_as_nc(
     Convert PANGAEA .tab files to netcdf.
 """
 
-path_data_base = os.path.dirname(wdir[:-1]) + "/data/"
+path_data_base = os.path.abspath(wdir + "../..") + "/data/"
 
 if len(sys.argv) == 1:
     rs_version = 'level_2'
