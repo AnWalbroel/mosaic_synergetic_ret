@@ -67,8 +67,8 @@ if which_figure in ["3", "4", "5"]:
     run_retrieval_evaluation(path_data, path_plots, path_output, var_dict[which_figure])
 
 
-# Fig. 6, 7, 9: Retrieval benefit IWV, q, relative humidity:
-if which_figure in ["6", "7", "9"]:
+# Fig. 6, 7, 10: Retrieval benefit IWV, q, relative humidity:
+if which_figure in ["6", "7", "10"]:
     from benefit_plots import run_benefit_plots
     path_data = {'nn_syn_mosaic': path_data_base + "retrieval_output/mosaic/",  # synergy of hatpro and mirac-p
                 'mwr_pro': path_data_base + "hatpro_l2/",       # hatpro retrievals
@@ -81,12 +81,12 @@ if which_figure in ["6", "7", "9"]:
     path_plots = path_plots_base + "retrieval_benefit/"
     os.makedirs(os.path.dirname(path_plots), exist_ok=True)
 
-    var_dict = {'6': 'iwv', '7': 'q', '9': 'rh'}
+    var_dict = {'6': 'iwv', '7': 'q', '10': 'rh'}
     run_benefit_plots(path_data, path_plots, var_dict[which_figure])
 
 
-# Fig. 8: DOF boxplot:
-if which_figure == "8":
+# Fig. 8, 9: DOF boxplot:
+if which_figure in ["8", "9"]:
     from DOF_plots import run_DOF_plots
     path_data = {'eval': path_data_base + "retrieval_output/era5/", # ERA5 evaluation data
                 'i_cont': path_data_base + "info_content/"}         # information content output
@@ -94,19 +94,6 @@ if which_figure == "8":
     os.makedirs(os.path.dirname(path_plots), exist_ok=True)
 
     run_DOF_plots(path_data, path_plots)
-
-
-# Fig. 10: Specific humidity inversion case study:
-if which_figure == "10":
-    from q_inv_case_study import run_q_inv_case_study
-    path_data = {'mwr_syn': path_data_base + "retrieval_output/mosaic/",    # synergy of hatpro and mirac-p
-                'mwr_hat': path_data_base + "hatpro_l2/",       # hatpro humidity profiles only
-                'rs': path_data_base + "MOSAiC_radiosondes/",   # MOSAiC level 2 radiosondes
-                'era5_m': path_data_base + "ERA5_data/"}        # ERA5 on model levels
-    path_plots = path_plots_base + "q_inv_case_study/"
-    os.makedirs(os.path.dirname(path_plots), exist_ok=True)
-
-    run_q_inv_case_study(path_data, path_plots)
 
 
 # Fig. B1: IWV comparison:
@@ -153,7 +140,7 @@ if which_figure == "B1":
     run_benefit_plots(path_data, path_plots, 'iwv', appendix=True)
 
 
-# Fig. B1: q comparison:
+# Fig. B2: q comparison:
 if which_figure == "B2":
 
     # first, run the retrieval to get the needed data: NOTE: EXECUTING THE RETRIEVAL REPLACES
@@ -195,3 +182,18 @@ if which_figure == "B2":
     path_plots = path_plots_base + "retrieval_benefit/"
     os.makedirs(os.path.dirname(path_plots), exist_ok=True)
     run_benefit_plots(path_data, path_plots, 'q', appendix=True)
+
+
+# Fig. C1: q comparison with smoothed radiosonde profiles:
+if which_figure == "C1":
+    from smoothed_error_profiles import run_smoothed_error_profiles
+
+    # Paths:
+    path_data = {'nn_syn_mosaic': path_data_base + "retrieval_output/mosaic/",  # synergy of hatpro and mirac-p
+                'mwr_pro': path_data_base + "hatpro_l2/",       # hatpro retrievals
+                'radiosondes': path_data_base + "MOSAiC_radiosondes/",  # MOSAiC level 2 radiosondes
+                'i_cont': path_data_base + "info_content/"}     # information content output
+    path_plots = path_plots_base + "smoothed_error_profs/"
+    os.makedirs(os.path.dirname(path_plots), exist_ok=True)
+
+    run_smoothed_error_profiles(path_data, path_plots)
